@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: easy-mcp-client
+  threads:
+    virtual:
+      enabled: true
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor: DEBUG
