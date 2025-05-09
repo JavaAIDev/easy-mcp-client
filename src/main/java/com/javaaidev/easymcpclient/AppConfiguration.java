@@ -52,7 +52,7 @@ public class AppConfiguration {
 
   @Bean
   public List<McpSyncClient> mcpSyncClients(McpClientConfig mcpClientConfig) {
-    return new McpClientService().connect(mcpClientConfig.servers());
+    return new McpClientService().connect(mcpClientConfig.mcpServers().values());
   }
 
   @Bean

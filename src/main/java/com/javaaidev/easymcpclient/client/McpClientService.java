@@ -12,11 +12,12 @@ import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema.ClientCapabilities;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 
 public class McpClientService {
 
-  public List<McpSyncClient> connect(List<McpServer> servers) {
+  public List<McpSyncClient> connect(Collection<McpServer> servers) {
     return servers.stream().map(server -> {
       if (server instanceof StdioServer stdioServer) {
         return connect(stdioServer);

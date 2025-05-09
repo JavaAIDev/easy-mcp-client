@@ -17,6 +17,4 @@ public sealed interface McpServer permits SseServer, StdioServer {
     }
     throw new IllegalArgumentException("Unknown server type: " + this);
   }
-
-  String name();
 }

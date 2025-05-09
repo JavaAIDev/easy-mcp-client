@@ -5,19 +5,17 @@
     "model": "gpt-4.1-nano",
     "temperature": 0
   },
-  "servers": [
-    {
+  "mcpServers": {
+    "server-memory": {
       "type": "stdio",
-      "name": "server-memory",
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-memory"
       ]
     },
-    {
+    "filesystem": {
       "type": "stdio",
-      "name": "filesystem",
       "command": "npx",
       "args": [
         "-y",
@@ -25,5 +23,5 @@
         "/path"
       ]
     }
-  ]
+  }
 }
