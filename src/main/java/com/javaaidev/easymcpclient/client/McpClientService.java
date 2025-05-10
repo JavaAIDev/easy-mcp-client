@@ -1,10 +1,9 @@
 package com.javaaidev.easymcpclient.client;
 
-import com.javaaidev.easymcpclient.config.mcp.McpServer;
+import com.javaaidev.easymcpclient.config.mcp.NamedMcpServer;
 import com.javaaidev.easymcpclient.config.mcp.SseServer;
 import com.javaaidev.easymcpclient.config.mcp.StdioServer;
 import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
@@ -14,41 +13,67 @@ import io.modelcontextprotocol.spec.McpSchema.Implementation;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 
 public class McpClientService {
 
-  public List<McpSyncClient> connect(Collection<McpServer> servers) {
-    return servers.stream().map(server -> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(McpClientService.class);
+
+  private final SamplingService samplingService;
+  private final ApplicationEventPublisher applicationEventPublisher;
+
+  public McpClientService(SamplingService samplingService,
+      ApplicationEventPublisher applicationEventPublisher) {
+    this.samplingService = samplingService;
+    this.applicationEventPublisher = applicationEventPublisher;
+  }
+
+  public List<NamedMcpSyncClient> connect(Collection<NamedMcpServer> servers) {
+    return servers.stream().map(namedMcpServer -> {
+      var name = namedMcpServer.name();
+      var server = namedMcpServer.mcpServer();
       if (server instanceof StdioServer stdioServer) {
-        return connect(stdioServer);
+        return connect(name, stdioServer);
       } else if (server instanceof SseServer sseServer) {
-        return connect(sseServer);
+        return connect(name, sseServer);
       }
-      throw new IllegalArgumentException("Invalid MCP server");
-    }).toList();
+      return Optional.<NamedMcpSyncClient>empty();
+    }).flatMap(Optional::stream).toList();
   }
 
-  private McpSyncClient connect(SseServer server) {
-    return doConnect(HttpClientSseClientTransport.builder(server.url()).build());
+  private Optional<NamedMcpSyncClient> connect(String name, SseServer server) {
+    return doConnect(name, HttpClientSseClientTransport.builder(server.url()).build());
   }
 
-  private McpSyncClient connect(StdioServer server) {
-    return doConnect(new StdioClientTransport(
+  private Optional<NamedMcpSyncClient> connect(String name, StdioServer server) {
+    return doConnect(name, new StdioClientTransport(
         ServerParameters.builder(server.command())
             .args(server.args())
             .env(server.env())
             .build()));
   }
 
-  private McpSyncClient doConnect(McpClientTransport clientTransport) {
-    var client = McpClient.sync(clientTransport)
-        .clientInfo(new Implementation("easy-mcp-client", "0.1.0"))
-        .requestTimeout(Duration.ofSeconds(30))
-        .capabilities(ClientCapabilities.builder()
-            .sampling()
-            .build())
-        .build();
-    client.initialize();
-    return client;
+  private Optional<NamedMcpSyncClient> doConnect(String name, McpClientTransport clientTransport) {
+    try {
+      var client = McpClient.sync(clientTransport)
+          .clientInfo(new Implementation("easy-mcp-client", "0.1.0"))
+          .requestTimeout(Duration.ofSeconds(30))
+          .initializationTimeout(Duration.ofSeconds(30))
+          .capabilities(ClientCapabilities.builder()
+              .sampling()
+              .build())
+          .sampling(samplingService)
+          .toolsChangeConsumer(
+              tools -> applicationEventPublisher.publishEvent(new ToolsChangedEvent(name)))
+          .build();
+      client.initialize();
+      return Optional.of(new NamedMcpSyncClient(name, client));
+    } catch (Exception e) {
+      LOGGER.error("Failed to connect to MCP server {}", name, e);
+    }
+    return Optional.empty();
   }
 }

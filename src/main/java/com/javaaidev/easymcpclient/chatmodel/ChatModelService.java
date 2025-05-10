@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
@@ -15,14 +16,14 @@ public class ChatModelService {
 
   private final Dotenv dotenv = Dotenv.configure().ignoreIfMissing().ignoreIfMalformed().load();
 
-  public ChatModel create(ChatModelConfig config) {
+  public ChatModel create(ChatModelConfig config, ToolCallingManager toolCallingManager) {
     if (config instanceof OpenAIChatModelConfig openAIChatModelConfig) {
-      return create(openAIChatModelConfig);
+      return create(openAIChatModelConfig, toolCallingManager);
     }
     throw new IllegalArgumentException("Invalid chat model config");
   }
 
-  private ChatModel create(OpenAIChatModelConfig config) {
+  private ChatModel create(OpenAIChatModelConfig config, ToolCallingManager toolCallingManager) {
     String apiKey = "";
     if (StringUtils.isNotEmpty(config.apiKey())) {
       apiKey = config.apiKey();
@@ -43,6 +44,7 @@ public class ChatModelService {
     return OpenAiChatModel.builder()
         .openAiApi(openAiApiBuilder.build())
         .defaultOptions(chatOptionsBuilder.build())
+        .toolCallingManager(toolCallingManager)
         .build();
   }
 

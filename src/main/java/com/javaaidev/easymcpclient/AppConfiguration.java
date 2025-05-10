@@ -4,20 +4,31 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.javaaidev.easymcpclient.chatmodel.ChatModelService;
+import com.javaaidev.easymcpclient.client.CloseableMcpSyncClients;
 import com.javaaidev.easymcpclient.client.McpClientService;
+import com.javaaidev.easymcpclient.client.McpToolCallbackResolver;
+import com.javaaidev.easymcpclient.client.NamedMcpSyncClient;
+import com.javaaidev.easymcpclient.client.SamplingService;
 import com.javaaidev.easymcpclient.config.McpClientConfig;
-import io.modelcontextprotocol.client.McpSyncClient;
+import com.javaaidev.easymcpclient.config.mcp.NamedMcpServer;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
-import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.model.tool.ToolCallingManager;
+import org.springframework.ai.tool.execution.DefaultToolExecutionExceptionProcessor;
+import org.springframework.ai.tool.execution.ToolExecutionExceptionProcessor;
+import org.springframework.ai.tool.resolution.DelegatingToolCallbackResolver;
+import org.springframework.ai.tool.resolution.SpringBeanToolCallbackResolver;
+import org.springframework.ai.tool.resolution.ToolCallbackResolver;
 import org.springframework.ai.util.JacksonUtils;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationArguments;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.support.GenericApplicationContext;
 
 @Configuration
 public class AppConfiguration {
@@ -46,18 +57,68 @@ public class AppConfiguration {
   }
 
   @Bean
-  public ChatModel chatModel(McpClientConfig mcpClientConfig) {
-    return new ChatModelService().create(mcpClientConfig.chatModel());
+  public ChatModel chatModel(McpClientConfig mcpClientConfig,
+      ToolCallingManager toolCallingManager) {
+    return new ChatModelService().create(mcpClientConfig.chatModel(), toolCallingManager);
   }
 
   @Bean
-  public List<McpSyncClient> mcpSyncClients(McpClientConfig mcpClientConfig) {
-    return new McpClientService().connect(mcpClientConfig.mcpServers().values());
+  public SamplingService samplingService(ChatModel chatModel) {
+    return new SamplingService(chatModel);
   }
 
   @Bean
-  public ToolCallbackProvider mcpToolCallbacks(ObjectProvider<List<McpSyncClient>> syncMcpClients) {
-    List<McpSyncClient> mcpClients = syncMcpClients.stream().flatMap(List::stream).toList();
-    return new SyncMcpToolCallbackProvider(mcpClients);
+  public McpClientService mcpClientService(@Lazy SamplingService samplingService,
+      ApplicationEventPublisher applicationEventPublisher) {
+    return new McpClientService(samplingService, applicationEventPublisher);
+  }
+
+  @Bean
+  public List<NamedMcpSyncClient> mcpSyncClients(McpClientService mcpClientService,
+      McpClientConfig mcpClientConfig) {
+    return mcpClientService.connect(mcpClientConfig.mcpServers().entrySet().stream()
+        .map(entry -> new NamedMcpServer(entry.getKey(), entry.getValue())).toList());
+  }
+
+  @Bean
+  public McpToolCallbackResolver mcpToolCallbackResolver(List<NamedMcpSyncClient> syncMcpClients) {
+    return new McpToolCallbackResolver(syncMcpClients);
+  }
+
+  @Bean
+  public CloseableMcpSyncClients closeableMcpSyncClients(List<NamedMcpSyncClient> mcpSyncClients) {
+    return new CloseableMcpSyncClients(mcpSyncClients);
+  }
+
+  @Bean
+  public AppListener appListener() {
+    return new AppListener();
+  }
+
+  @Bean
+  public ToolExecutionExceptionProcessor toolExecutionExceptionProcessor() {
+    return new DefaultToolExecutionExceptionProcessor(false);
+  }
+
+  @Bean
+  public ToolCallingManager toolCallingManager(
+      @Qualifier("mainToolCallbackResolver") ToolCallbackResolver toolCallbackResolver,
+      ToolExecutionExceptionProcessor toolExecutionExceptionProcessor) {
+    return ToolCallingManager.builder()
+        .toolCallbackResolver(toolCallbackResolver)
+        .toolExecutionExceptionProcessor(toolExecutionExceptionProcessor)
+        .build();
+  }
+
+  @Bean
+  @Qualifier("mainToolCallbackResolver")
+  public ToolCallbackResolver toolCallbackResolver(McpToolCallbackResolver mcpToolCallbackResolver,
+      GenericApplicationContext applicationContext) {
+    var springBeanToolCallbackResolver = SpringBeanToolCallbackResolver.builder()
+        .applicationContext(applicationContext)
+        .build();
+
+    return new DelegatingToolCallbackResolver(
+        List.of(mcpToolCallbackResolver, springBeanToolCallbackResolver));
   }
 }
