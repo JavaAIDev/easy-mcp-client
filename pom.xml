@@ -7,21 +7,23 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.5</version>
+    <version>3.4.6</version>
     <relativePath/>
   </parent>
 
   <groupId>com.javaaidev.easymcpclient</groupId>
   <artifactId>easy-mcp-client</artifactId>
-  <version>0.1.0</version>
+  <name>Easy MCP Client</name>
+  <description>An easy-to-use MCP client for testing</description>
+  <version>0.2.0</version>
 
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spring-ai.version>1.0.0-M8</spring-ai.version>
+    <spring-ai.version>1.0.0</spring-ai.version>
     <chat-agent-ui.version>0.11.0</chat-agent-ui.version>
-    <llm-agent-spec.version>0.1.4</llm-agent-spec.version>
+    <llm-agent-spec.version>0.2.0</llm-agent-spec.version>
   </properties>
 
   <dependencies>
@@ -67,7 +69,7 @@
       <dependency>
         <groupId>io.modelcontextprotocol.sdk</groupId>
         <artifactId>mcp-bom</artifactId>
-        <version>0.9.0</version>
+        <version>0.10.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
