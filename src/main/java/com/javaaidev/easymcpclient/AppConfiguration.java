@@ -11,6 +11,7 @@ import com.javaaidev.easymcpclient.client.NamedMcpSyncClient;
 import com.javaaidev.easymcpclient.client.SamplingService;
 import com.javaaidev.easymcpclient.config.McpClientConfig;
 import com.javaaidev.easymcpclient.config.mcp.NamedMcpServer;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -42,6 +43,12 @@ public class AppConfiguration {
   }
 
   @Bean
+  public McpJsonMapper mcpJsonMapper() {
+    return McpJsonMapper.createDefault();
+  }
+
+
+  @Bean
   public McpClientConfig mcpClientConfig(ApplicationArguments arguments,
       ObjectMapper objectMapper) {
     var args = arguments.getNonOptionArgs();
@@ -69,8 +76,9 @@ public class AppConfiguration {
 
   @Bean
   public McpClientService mcpClientService(@Lazy SamplingService samplingService,
+      McpJsonMapper mcpJsonMapper,
       ApplicationEventPublisher applicationEventPublisher) {
-    return new McpClientService(samplingService, applicationEventPublisher);
+    return new McpClientService(samplingService, mcpJsonMapper, applicationEventPublisher);
   }
 
   @Bean

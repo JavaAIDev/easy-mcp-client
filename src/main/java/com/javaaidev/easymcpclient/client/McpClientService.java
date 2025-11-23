@@ -7,6 +7,7 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema.ClientCapabilities;
 import io.modelcontextprotocol.spec.McpSchema.Implementation;
@@ -23,11 +24,13 @@ public class McpClientService {
   private static final Logger LOGGER = LoggerFactory.getLogger(McpClientService.class);
 
   private final SamplingService samplingService;
+  private final McpJsonMapper mcpJsonMapper;
   private final ApplicationEventPublisher applicationEventPublisher;
 
-  public McpClientService(SamplingService samplingService,
+  public McpClientService(SamplingService samplingService, McpJsonMapper mcpJsonMapper,
       ApplicationEventPublisher applicationEventPublisher) {
     this.samplingService = samplingService;
+    this.mcpJsonMapper = mcpJsonMapper;
     this.applicationEventPublisher = applicationEventPublisher;
   }
 
@@ -53,7 +56,7 @@ public class McpClientService {
         ServerParameters.builder(server.command())
             .args(server.args())
             .env(server.env())
-            .build()));
+            .build(), mcpJsonMapper));
   }
 
   private Optional<NamedMcpSyncClient> doConnect(String name, McpClientTransport clientTransport) {

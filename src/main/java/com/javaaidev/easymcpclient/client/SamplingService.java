@@ -11,7 +11,6 @@ import io.modelcontextprotocol.spec.McpSchema.SamplingMessage;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import io.modelcontextprotocol.spec.McpSchema.TextResourceContents;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -99,11 +98,9 @@ public class SamplingService implements Function<CreateMessageRequest, CreateMes
       }
       case ASSISTANT -> {
         var mediaList = media != null ? List.of(media) : List.<Media>of();
-        yield new AssistantMessage(
-            Objects.requireNonNullElse(text, ""),
-            Map.of(),
-            List.of(),
-            mediaList);
+        yield AssistantMessage.builder()
+            .content(Objects.requireNonNullElse(text, ""))
+            .media(mediaList).build();
       }
     };
   }
