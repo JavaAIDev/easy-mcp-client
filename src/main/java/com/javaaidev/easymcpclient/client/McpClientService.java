@@ -3,8 +3,10 @@ package com.javaaidev.easymcpclient.client;
 import com.javaaidev.easymcpclient.config.mcp.NamedMcpServer;
 import com.javaaidev.easymcpclient.config.mcp.SseServer;
 import com.javaaidev.easymcpclient.config.mcp.StdioServer;
+import com.javaaidev.easymcpclient.config.mcp.StreamableServer;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
+import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
 import io.modelcontextprotocol.client.transport.ServerParameters;
 import io.modelcontextprotocol.client.transport.StdioClientTransport;
 import io.modelcontextprotocol.json.McpJsonMapper;
@@ -42,6 +44,8 @@ public class McpClientService {
         return connect(name, stdioServer);
       } else if (server instanceof SseServer sseServer) {
         return connect(name, sseServer);
+      } else if (server instanceof StreamableServer streamableServer) {
+        return connect(name, streamableServer);
       }
       return Optional.<NamedMcpSyncClient>empty();
     }).flatMap(Optional::stream).toList();
@@ -50,6 +54,11 @@ public class McpClientService {
   private Optional<NamedMcpSyncClient> connect(String name, SseServer server) {
     return doConnect(name, HttpClientSseClientTransport.builder(server.url()).build());
   }
+
+  private Optional<NamedMcpSyncClient> connect(String name, StreamableServer server) {
+    return doConnect(name, HttpClientStreamableHttpTransport.builder(server.url()).build());
+  }
+
 
   private Optional<NamedMcpSyncClient> connect(String name, StdioServer server) {
     return doConnect(name, new StdioClientTransport(

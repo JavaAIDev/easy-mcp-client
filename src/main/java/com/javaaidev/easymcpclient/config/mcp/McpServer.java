@@ -6,14 +6,18 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = SseServer.class, name = "sse"),
-    @JsonSubTypes.Type(value = StdioServer.class, name = "stdio")})
-public sealed interface McpServer permits SseServer, StdioServer {
+    @JsonSubTypes.Type(value = StdioServer.class, name = "stdio"),
+    @JsonSubTypes.Type(value = StreamableServer.class, name = "streamable"),
+})
+public sealed interface McpServer permits SseServer, StdioServer, StreamableServer {
 
   default String type() {
     if (this instanceof SseServer) {
       return "sse";
     } else if (this instanceof StdioServer) {
       return "stdio";
+    } else if (this instanceof StreamableServer) {
+      return "streamable";
     }
     throw new IllegalArgumentException("Unknown server type: " + this);
   }
